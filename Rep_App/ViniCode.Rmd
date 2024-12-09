@@ -1,0 +1,562 @@
+---
+title: "Aplicativo - Fraude em Transações"
+date: 2024-12-08
+author:
+  - name: Vinícius Antonio Sartório, Vinicius De Lima Santana, Gligor Douglas Ortiz, Alan Vitor, Jonathas Pereira
+email: viniciusartorio@gmail.com | santanavinicius05@gmail.com | gligordouglas@gmail.com | alanvitorsta@gmail.com |
+affiliation: 
+    - name: Universidade Federal do Paraná
+      city: Curitiba
+      state: PR
+      url: https://github.com/Ce3002/trabalho-final-fraudes | https://github.com/ViniciusASartorio | https://github.com/jonhsp | https://github.com/GligorDouglas | https://github.com/alanvitor1 | https://github.com/ClerenceSilva
+        
+format: 
+  html: default
+  pdf: default        
+---
+
+## Introdução
+
+A detecção de fraudes financeiras representa um desafio crítico para instituições financeiras e consumidores em um cenário cada vez mais digitalizado. Transações fraudulentas podem acarretar prejuízos financeiros substanciais, erosão da confiança e impactos na reputação de empresas e organizações. Com a crescente complexidade das fraudes e o aumento das transações digitais, torna-se essencial o desenvolvimento de ferramentas analíticas e preditivas que auxiliem na identificação de padrões suspeitos.
+
+A base de dados analisada neste trabalho apresenta informações detalhadas sobre transações financeiras, incluindo variáveis relacionadas a país, distância do local de compras, tipo de comerciante, canal de acesso e dispositivos utilizados. Esses dados fornecem um ambiente propício para a exploração de padrões de fraude, permitindo uma abordagem detalhada e fundamentada para a construção de um aplicativo em Shiny que exponha os principais resultados e análises.
+
+Este estudo propõe uma análise multifacetada das fraudes, abordando:  
+1. *Proporção de fraudes por país*, utilizando testes de hipótese para investigar diferenças estatísticas significativas.  
+2. *Análises descritivas e exploratórias* de padrões de fraude com filtros como distância, categoria e tipo de comerciante, e se a transação envolveu um cartão presente.  
+3. *Avaliação de canais de acesso*, considerando variáveis como dispositivo, categoria e tipo de comerciante, bem como o nome do estabelecimento.  
+4. *Modelagem preditiva baseada em aprendizado de máquina*, com o objetivo de compreender o comportamento das fraudes e prever quando uma transação tem maior probabilidade de ser fraudulenta.
+
+A justificativa para esta abordagem reside na relevância prática e teórica do tema. Identificar padrões de fraude e desenvolver modelos preditivos eficazes não apenas reduz os prejuízos financeiros, mas também fortalece a confiança no sistema financeiro. Além disso, a combinação de métodos estatísticos e aprendizado de máquina oferece uma perspectiva robusta e inovadora para o enfrentamento do problema.
+
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+
+require("shiny")
+require("ggplot2")
+require("tidyverse")
+require("magrittr")
+require("extrafont")
+require("ggthemes")
+require("plotly")
+require("dplyr")
+require("readr")
+require("shinydashboard")
+```
+
+
+A base de dados é carregada através do link 
+```{r, message = FALSE, warning = FALSE}
+##Carregamento de pacotes e base de dados:
+library(data.table)
+file_url <- "https://www.dropbox.com/scl/fi/28ob9s7763l84gencgr7z/sampleData.csv?rlkey=ojazz6dv85pwu98odj161dxsq&st=sx1ymz49&dl=1"
+temp_file <- tempfile(fileext = ".csv")
+download.file(file_url, temp_file, mode = "wb")
+library(data.table)
+data <- fread(temp_file)
+
+head(data)
+```
+
+
+
+
+## Materiais e Métodos
+
+O estudo utilizou uma amostra aleatória de cerca de Um Milhão de dados para a realização das observações concluidas, foi utilizado a plataforma R Shiny com a biblioteca shinydashboard para desenvolver uma aplicação interativa. O backend foi alimentado por dados manipulados com o pacote dplyr. A visualização foi realizada através do pacote plotly para gráficos interativos e da tabela DT para exibição tabular. Filtros dinâmicos foram implementados para seleção de variáveis, como hora da transação, tipo de fraude e categoria de comerciante. A manipulação de dados incluiu agrupamentos e cálculos de frequências relativas para análise detalhada das tendências de fraude. 
+Três análises descritivas foram realizadas: 
+(1) um gráfico de barras mostrando a proporção de fraudes por hora do dia; 
+(2) um gráfico de barras laterais ranqueando os países pelo número de fraudes; 
+(3) um histograma categorizando fraudes e não fraudes por tipo de comerciante; 
+Além disso, conduzimos um teste de hipótese para avaliar a relação entre a taxa de fraudes e países.
+
+## Resultados e discussões 
+
+![Minha Imagem](https://raw.githubusercontent.com/GligorDouglas/Testes/refs/heads/main/Rep_App/Imagens/img_th.jpeg)
+![Minha Imagem](https://raw.githubusercontent.com/ViniciusASartorio/teste-teste/refs/heads/main/WhatsApp%20Image%202024-12-08%20at%2019.11.57.jpeg)
+
+## Resultados: Codigo dos gráficos gerados:
+
+
+```r
+```{r shiny_app, include=TRUE}
+
+
+# UI da aplicação
+ui <- dashboardPage(
+  dashboardHeader(title = "Transações por Hora"),
+  dashboardSidebar(
+    sliderInput(
+      inputId = "hour_range",
+      label = "Selecione o intervalo de horas:",
+      min = 0, max = 23, value = c(0, 23),
+      step = 1
+    ),
+    selectInput(
+      inputId = "weekend_filter",
+      label = "Filtrar por dia da semana:",
+      choices = c("Total" = "total", 
+                  "Final de Semana" = "weekend", 
+                  "Dia de Semana" = "weekday"),
+      selected = "total"
+    ),
+    selectInput(
+      inputId = "fraud_filter",
+      label = "Filtrar por Fraude:",
+      choices = c("Total" = "total", 
+                  "Fraude" = "fraud", 
+                  "Não Fraude" = "non_fraud"),
+      selected = "total"
+    ),
+    selectInput(
+      inputId = "currency_filter",
+      label = "Filtrar pela Moeda:",
+      choices = c("Todas" = "all"),  # As opções serão atualizadas dinamicamente
+      selected = "all"
+    )
+  ),
+  dashboardBody(
+    fluidRow(
+      box(
+        title = "Histograma de Proporções de Transações por Hora",
+        status = "primary",
+        solidHeader = TRUE,
+        width = 8,
+        plotlyOutput("hour_histogram", height = "400px")
+      ),
+      box(
+        title = "Tabela de Totais por Hora",
+        status = "info",
+        solidHeader = TRUE,
+        width = 4,
+        tableOutput("totals_table")
+      )
+    )
+  )
+)
+
+# Server da aplicação
+server <- function(input, output, session) {
+  # Atualizar opções do filtro de moeda dinamicamente
+  observe({
+    currency_options <- unique(data$currency)
+    updateSelectInput(
+      session,
+      inputId = "currency_filter",
+      choices = c("Todas" = "all", currency_options)
+    )
+  })
+  
+  # Filtrar os dados dinamicamente
+  filtered_data <- reactive({
+    filtered <- data %>%
+      filter(transaction_hour >= input$hour_range[1],
+             transaction_hour <= input$hour_range[2])
+    
+    # Filtro por final de semana/dia de semana
+    if (input$weekend_filter == "weekend") {
+      filtered <- filtered %>% filter(weekend_transaction == TRUE)
+    } else if (input$weekend_filter == "weekday") {
+      filtered <- filtered %>% filter(weekend_transaction == FALSE)
+    }
+    
+    # Filtro por fraude
+    if (input$fraud_filter == "fraud") {
+      filtered <- filtered %>% filter(is_fraud == TRUE)
+    } else if (input$fraud_filter == "non_fraud") {
+      filtered <- filtered %>% filter(is_fraud == FALSE)
+    }
+    
+    # Filtro por moeda
+    if (input$currency_filter != "all") {
+      filtered <- filtered %>% filter(currency == input$currency_filter)
+    }
+    
+    return(filtered)
+  })
+  
+  # Renderizar o histograma com plotly
+  output$hour_histogram <- renderPlotly({
+    data_to_plot <- filtered_data()
+    
+    # Calcular proporções
+    total_count <- nrow(data_to_plot)
+    data_to_plot <- data_to_plot %>%
+      group_by(transaction_hour) %>%
+      summarise(count = n()) %>%
+      mutate(proportion = count / total_count)
+    
+    # Criar o histograma interativo com plotly
+    plot_ly(
+      data = data_to_plot,
+      x = ~transaction_hour,
+      y = ~proportion,
+      type = 'bar',
+      marker = list(color = 'blue'),
+      hoverinfo = 'x+y'
+    ) %>%
+      layout(
+        title = "Proporção de Transações por Hora",
+        xaxis = list(title = "Hora do Dia", tickmode = "linear", tick0 = 0, dtick = 1),
+        yaxis = list(title = "Proporção", tickformat = "%"),
+        bargap = 0.1
+      )
+  })
+  
+  # Renderizar a tabela de totais
+  output$totals_table <- renderTable({
+    data_to_table <- filtered_data()
+    
+    # Agrupar e contar transações por hora
+    totals <- data_to_table %>%
+      group_by(transaction_hour) %>%
+      summarise(Total_Transacoes = n()) %>%
+      arrange(transaction_hour)
+    
+    return(totals)
+  })
+}
+
+# Rodar a aplicação
+shinyApp(ui, server)
+
+
+# Mapeamento de bandeiras com fallback
+flag_urls <- tibble::tibble(
+  country = c(
+    "UK", "Brazil", "Japan", "Australia", "Nigeria", "Germany", "Mexico", "Russia", "France", "Canada", "Singapore", "USA"
+  ),
+  flag = c(
+    'C:/Users/santa/Downloads/bandeiras/united-kingdom.png',
+    'C:/Users/santa/Downloads/bandeiras/brazil-.png',
+    'C:/Users/santa/Downloads/bandeiras/japan.png',
+    'C:/Users/santa/Downloads/bandeiras/australia.png',
+    'C:/Users/santa/Downloads/bandeiras/nigeria.png',
+    'C:/Users/santa/Downloads/bandeiras/germany.png',
+    'C:/Users/santa/Downloads/bandeiras/mexico.png',
+    'C:/Users/santa/Downloads/bandeiras/russia.png',
+    'C:/Users/santa/Downloads/bandeiras/france.png',
+    'C:/Users/santa/Downloads/bandeiras/canada.png',
+    'C:/Users/santa/Downloads/bandeiras/singapore.png',
+    'C:/Users/santa/Downloads/bandeiras/united-states.png'
+  )
+)
+
+
+# UI
+ui <- dashboardPage(
+  dashboardHeader(title = "Fraudes por País"),
+  dashboardSidebar(
+    selectInput("merchant_category", "Categoria do Comerciante:", choices = NULL, selected = NULL),
+    selectInput("merchant_type", "Tipo do Comerciante:", choices = NULL, selected = NULL),
+    selectInput("distance_from_home", "Distância da Casa:", 
+                choices = c("Todos", "Dentro de Casa", "Fora de Casa"), 
+                selected = "Todos"),
+    selectInput("card_present", "Cartão Presente:", 
+                choices = c("Todos", "Sim", "Não"), 
+                selected = "Todos"),
+    selectInput("filter_fraud", "Tipo de Transação:", 
+                choices = c("Total", "Fraude", "Não Fraude"), 
+                selected = "Total")
+  ),
+  dashboardBody(
+    fluidRow(
+      box(
+        title = "Ranking de Fraudes por País", 
+        status = "primary", 
+        solidHeader = TRUE, 
+        collapsible = TRUE,
+        plotOutput("fraud_plot", height = "900px"), # Altura maior para acomodar bandeiras
+        width = 6  # Garantir que a box do gráfico ocupe metade da tela
+      ),
+      box(
+        title = "Tabela de Fraudes por País",
+        status = "primary", 
+        solidHeader = TRUE, 
+        collapsible = TRUE,
+        DT::dataTableOutput("fraud_table", height = '900px'), # Tabela de fraudes
+        width = 6  # Garantir que a box da tabela ocupe a outra metade da tela
+      )
+    )
+  )
+)
+
+# Server
+server <- function(input, output, session) {
+  # Atualizar os filtros dinâmicos
+  updateSelectInput(session, "merchant_category", choices = c("Todos", unique(data$merchant_category)))
+  updateSelectInput(session, "merchant_type", choices = c("Todos", unique(data$merchant_type)))
+  
+  # Gerar os dados filtrados
+  filtered_data <- reactive({
+    distance_condition <- if (input$distance_from_home == "Todos") {
+      TRUE
+    } else if (input$distance_from_home == "Dentro de Casa") {
+      data$distance_from_home == FALSE
+    } else {
+      data$distance_from_home == TRUE
+    }
+    
+    card_condition <- if (input$card_present == "Todos") {
+      TRUE
+    } else if (input$card_present == "Sim") {
+      data$card_present == TRUE
+    } else {
+      data$card_present == FALSE
+    }
+    
+    filter_condition <- if (input$filter_fraud == "Total") {
+      TRUE
+    } else if (input$filter_fraud == "Fraude") {
+      data$is_fraud == TRUE
+    } else {
+      data$is_fraud == FALSE
+    }
+    
+    data %>% 
+      filter(
+        (input$merchant_category == "Todos" | merchant_category == input$merchant_category),
+        (input$merchant_type == "Todos" | merchant_type == input$merchant_type),
+        distance_condition,
+        card_condition,
+        filter_condition
+      ) %>%
+      group_by(country) %>%
+      summarise(total_frauds = n(), .groups = 'drop') %>%
+      mutate(relative_frequency = total_frauds / sum(total_frauds)) %>%
+      arrange(desc(total_frauds)) %>%
+      left_join(flag_urls, by = "country") # Manter a coluna 'flag' para o gráfico
+  })
+  
+  # Gerar o gráfico filtrado
+  output$fraud_plot <- renderPlot({
+    df <- filtered_data()
+    
+    if (nrow(df) == 0) {
+      ggplot() +
+        annotate("text", x = 0.5, y = 0.5, label = "Nenhum dado disponível", size = 5, hjust = 0.5, vjust = 0.5) +
+        theme_void()
+    } else {
+      ggplot(df, aes(x = reorder(country, relative_frequency), y = relative_frequency)) +
+        geom_bar(stat = "identity", aes(fill = country), show.legend = FALSE) +
+        geom_image(aes(image = flag), size = 0.07, hjust = -0.2) +
+        coord_flip() +
+        scale_fill_brewer(palette = "Set3") +
+        scale_y_continuous(labels = scales::percent) +
+        labs(
+          x = "País",
+          y = "Frequência Relativa"
+        ) +
+        theme_minimal() +
+        theme(
+          legend.position = "none",
+          panel.grid.major.y = element_blank(),
+          panel.grid.major.x = element_line(color = "gray", size = 0.5),
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank(),
+          axis.line.y = element_line(color = "black"),
+          axis.ticks.y = element_blank(),
+          axis.ticks.x = element_line(color = "black"),
+          axis.text.x = element_text(size = 12, angle = 45, hjust = 1),
+          axis.text.y = element_text(size = 14)
+        )
+    }
+  })
+  
+  # Gerar a tabela com os dados filtrados
+  output$fraud_table <- DT::renderDataTable({
+    all_countries <- flag_urls %>%
+      left_join(
+        filtered_data() %>% select(country, total_frauds),
+        by = "country"
+      ) %>%
+      mutate(total_frauds = replace_na(total_frauds, 0)) %>%
+      arrange(desc(total_frauds))
+    
+    all_countries %>%
+      select(country, total_frauds) %>%
+      DT::datatable(
+        options = list(pageLength = 12),
+        style = "bootstrap",
+        class = "cell-border stripe",
+        rownames = FALSE
+      ) %>%
+      DT::formatStyle(
+        columns = c("country", "total_frauds"),
+        fontSize = "20px"
+      )
+  })
+}
+
+# Run app 
+shinyApp(ui, server)
+
+
+
+sampleData <- data
+
+sampleData <- sampleData %>% select(channel, device, merchant_category, merchant_type, merchant, is_fraud)
+
+
+ui <- dashboardPage(
+  dashboardHeader(title = "Análise de Transações por Canal e Dispositivo"),
+  dashboardSidebar(
+    selectInput("channel", "Selecione o Canal:", choices = c("Todos", unique(sampleData$channel))),
+    selectInput("merchant_category", "Selecione a Categoria do Comerciante:", choices = c("Todos", unique(sampleData$merchant_category))),
+    selectInput("merchant_type", "Selecione o Tipo do Comerciante:", choices = c("Todos")),
+    selectInput("merchant", "Selecione o Comerciante:", choices = c("Todos"))
+    # Filtro de fraude foi removido aqui
+  ),
+  dashboardBody(
+    fluidRow(
+      box(
+        title = "Gráfico de Colunas Lado a Lado - Fraudes e Não Fraudes",
+        status = "primary",
+        solidHeader = TRUE,
+        collapsible = TRUE,
+        plotlyOutput("device_ranking", height = "400px")
+      )
+    ),
+    fluidRow(
+      box(
+        title = "Tabela de Frequência de Dispositivos",
+        status = "info",
+        solidHeader = TRUE,
+        collapsible = TRUE,
+        DT::dataTableOutput("device_table")
+      )
+    )
+  )
+)
+
+# Lógica do Servidor
+server <- function(input, output, session) {
+  # Atualizar merchant_type com base na categoria selecionada
+  observeEvent(input$merchant_category, {
+    available_types <- sampleData %>%
+      filter(if (input$merchant_category != "Todos") merchant_category == input$merchant_category else TRUE) %>%
+      pull(merchant_type) %>%
+      unique()
+    
+    updateSelectInput(session, "merchant_type",
+                      choices = c("Todos", available_types),
+                      selected = "Todos")
+  })
+  
+  # Atualizar merchant com base no tipo selecionado
+  observeEvent(input$merchant_type, {
+    available_merchants <- sampleData %>%
+      filter(if (input$merchant_category != "Todos") merchant_category == input$merchant_category else TRUE,
+             if (input$merchant_type != "Todos") merchant_type == input$merchant_type else TRUE) %>%
+      pull(merchant) %>%
+      unique()
+    
+    updateSelectInput(session, "merchant",
+                      choices = c("Todos", available_merchants),
+                      selected = "Todos")
+  })
+  
+  # Dados filtrados dinamicamente
+  filtered_data <- reactive({
+    sampleData %>%
+      filter(
+        if (input$channel != "Todos") channel == input$channel else TRUE,
+        if (input$merchant_category != "Todos") merchant_category == input$merchant_category else TRUE,
+        if (input$merchant_type != "Todos") merchant_type == input$merchant_type else TRUE,
+        if (input$merchant != "Todos") merchant == input$merchant else TRUE
+      )
+  })
+  
+  # Gráfico de barras lado a lado para fraudes e não fraudes (sem filtro de fraude)
+  output$device_ranking <- renderPlotly({
+    # Dados para fraudes
+    fraud_data <- filtered_data() %>%
+      filter(is_fraud == TRUE) %>%
+      count(device, name = "Fraud_Count") %>%
+      mutate(Proportion_Fraud = Fraud_Count / sum(Fraud_Count))
+    
+    # Dados para não fraudes
+    non_fraud_data <- filtered_data() %>%
+      filter(is_fraud == FALSE) %>%
+      count(device, name = "NonFraud_Count") %>%
+      mutate(Proportion_NonFraud = NonFraud_Count / sum(NonFraud_Count))
+    
+    # Combinar os dados sem filtro de fraude
+    combined_data <- full_join(fraud_data, non_fraud_data, by = "device") %>%
+      mutate(
+        Proportion_Fraud = replace_na(Proportion_Fraud, 0),
+        Proportion_NonFraud = replace_na(Proportion_NonFraud, 0)
+      )
+    
+    # Plotar usando plotly
+    plot_ly() %>%
+      add_bars(
+        data = combined_data,
+        x = ~device,
+        y = ~Proportion_NonFraud,
+        name = "Não Fraude",
+        marker = list(color = "rgba(100, 150, 250, 1.0)")  # Azul opaco
+      ) %>%
+      add_bars(
+        data = combined_data,
+        x = ~device,
+        y = ~Proportion_Fraud,
+        name = "Fraude",
+        marker = list(color = "rgba(250, 100, 100, 1)")  # Vermelho transparente
+      ) %>%
+      layout(
+        title = "Distribuição de Dispositivos por Fraudes e Não Fraudes",
+        xaxis = list(title = "Dispositivo", tickangle = -45),
+        yaxis = list(title = "Proporção", tickformat = ".1%"),
+        barmode = "group",  # Barras lado a lado
+        legend = list(x = 1, y = 0.5)  # Legenda na direita, verticalmente centralizada
+      )
+  })
+  output$device_table <- DT::renderDataTable({
+    # Calcular a quantidade de fraudes, não fraudes e total por dispositivo
+    device_counts <- filtered_data() %>%
+      count(device, name = "Total") %>%
+      left_join(
+        filtered_data() %>%
+          filter(is_fraud == TRUE) %>%
+          count(device, name = "Fraud_Count"),
+        by = "device"
+      ) %>%
+      left_join(
+        filtered_data() %>%
+          filter(is_fraud == FALSE) %>%
+          count(device, name = "NonFraud_Count"),
+        by = "device"
+      ) %>%
+      mutate(
+        Fraud_Count = replace_na(Fraud_Count, 0),
+        NonFraud_Count = replace_na(NonFraud_Count, 0)
+      ) %>%
+      arrange(desc(Total))  # Organizar por total
+    
+    # Renderizar a tabela com as colunas de "Fraudes", "Não Fraudes" e "Total"
+    DT::datatable(
+      device_counts,
+      options = list(pageLength = 10),
+      style = "bootstrap",
+      class = "cell-border stripe",
+      rownames = FALSE
+    ) %>%
+      DT::formatStyle(
+        columns = c("device", "Total", "Fraud_Count", "NonFraud_Count"),
+        fontSize = "18px",
+        textAlign = "center"
+      )
+  })
+}
+  
+
+
+
+# Executar o App
+shinyApp(ui, server)
+```
+
+## Conclusão
+Como etapa avançada, foi implementado um modelo de machine learning para prever a ocorrência de fraudes, utilizando algoritmos de classificação.
+Concluímos que padrões temporais, regionais e setoriais são determinantes para fraudes, e que ferramentas analíticas e preditivas, como as desenvolvidas neste estudo, são essenciais para mitigar riscos e otimizar decisões.
